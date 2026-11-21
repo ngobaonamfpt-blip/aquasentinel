@@ -1,0 +1,26 @@
+{
+  "name": "aquasentinel-dashboard",
+  "version": "2.4.0",
+  "description": "AquaSentinel - Hệ thống giám sát & cảnh báo nguy cơ đuối nước tại bể bơi trường học (Dự án STEMPETITION - Đội AquaVix)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "simulate": "node scripts/simulate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "aquasentinel",
+    "stempetition",
+    "aquavix",
+    "esp32",
+    "drowning-detection",
+    "iot-safety",
+    "mpu6050",
+    "lifeguard-monitor"
+  ],
+  "author": "Đội thi AquaVix - STEMPETITION 2026",
+  "license": "MIT"
+}

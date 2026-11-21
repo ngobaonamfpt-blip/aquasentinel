@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AquaSentinel – Pool Safety Monitor | AquaVix</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛟</text></svg>">
+  <meta name="theme-color" content="#000052">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Be Vietnam Pro"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            ocean: { 400: '#7b93ff', 500: '#5170FF', 600: '#4A7FF7' },
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="font-sans antialiased min-h-screen">
+
+  <!-- Viền đỏ tĩnh khi có báo động -->
+  <div id="alertFrame" class="pointer-events-none fixed inset-0 z-[60] border-[5px] border-red-500 hidden"></div>
+  <div id="toastWrap" class="fixed top-16 right-4 z-[80] space-y-2 pointer-events-none"></div>
+
+  <!-- ============ HEADER TỐI GIẢN ============ -->
+  <header class="app-header sticky top-0 z-40 backdrop-blur border-b">
+    <div class="max-w-[1480px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between gap-4">
+
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-ocean-500 to-ocean-600 flex items-center justify-center shrink-0">
+          <i data-lucide="life-buoy" class="w-5 h-5 text-white"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-bold text-main truncate">AquaSentinel</h1>
+            <span class="badge-team text-[10px] font-semibold px-1.5 py-px rounded hidden sm:inline">AquaVix • STEMPETITION</span>
+            <span id="hwBadge" class="hidden text-[10px] font-bold px-1.5 py-px rounded bg-sky-500/15 text-sky-400">ESP32 LIVE</span>
+          </div>
+          <div class="text-[11px] text-muted truncate">
+            <span id="hdrClassName">Lớp 10A1 & 10A2</span> • <span id="hdrSupervisor">Thầy Trần Hữu Nghĩa</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg conn-box text-xs">
+          <span id="connDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="liveClock" class="font-mono font-bold text-main">--:--:--</span>
+        </div>
+
+        <button id="btnQuickTheme" class="icon-btn" title="Chuyển chế độ Sáng (Ngoài trời) / Tối">
+          <i id="themeIcon" data-lucide="sun" class="w-4 h-4"></i>
+        </button>
+        <button id="btnFullscreen" class="icon-btn hidden sm:inline-flex" title="Toàn màn hình">
+          <i id="fsIcon" data-lucide="maximize" class="w-4 h-4"></i>
+        </button>
+        <button id="btnToggleAudio" class="icon-btn" title="Bật / Tắt còi báo động">
+          <i id="audioIcon" data-lucide="volume-2" class="w-4 h-4"></i>
+        </button>
+        <button id="btnOpenIncidents" class="icon-btn relative" title="Nhật ký cứu hộ">
+          <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+          <span id="incidentBadge" class="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-ocean-500 text-white text-[10px] font-bold flex items-center justify-center">0</span>
+        </button>
+        <button id="btnOpenDocs" class="icon-btn" title="API & Code ESP32">
+          <i data-lucide="code-2" class="w-4 h-4"></i>
+        </button>
+        <button id="btnOpenSetup" class="icon-btn" title="Cài đặt buổi học">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Banner báo động -->
+    <div id="alertBanner" class="hidden bg-red-600 text-white border-t border-red-400">
+      <div class="max-w-[1480px] mx-auto px-4 lg:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 text-sm min-w-0">
+          <i data-lucide="siren" class="w-4 h-4 shrink-0"></i>
+          <span class="font-bold uppercase">Khẩn cấp:</span>
+          <span id="alertBannerText" class="truncate"></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnBannerView" class="px-2.5 py-1 rounded-lg bg-red-800/60 hover:bg-red-800 text-xs font-semibold">Chi tiết</button>
+          <button id="btnBannerResolve" class="px-3 py-1 rounded-lg bg-white text-red-700 hover:bg-red-50 text-xs font-bold">Xác nhận cứu hộ</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="max-w-[1480px] mx-auto px-4 lg:px-6 py-4 space-y-4">
+
+    <!-- 4 THẺ KPI TINH TẾ -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="kpi-card">
+        <div class="flex items-center justify-between">
+          <span class="kpi-label">Trong bể</span>
+          <span class="w-7 h-7 rounded-lg bg-ocean-500/15 text-ocean-400 flex items-center justify-center"><i data-lucide="users" class="w-3.5 h-3.5"></i></span>
+        </div>
+        <div class="flex items-baseline justify-between mt-1.5">
+          <div><span id="kpiInWater" class="kpi-value text-main">0</span> <span class="text-xs text-muted">/ <span id="kpiTotal">0</span></span></div>
+          <span class="text-[11px] text-subtle"><span id="kpiOnDeck">0</span> trên bờ</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="flex items-center justify-between">
+          <span class="kpi-label">An toàn</span>
+          <span class="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><i data-lucide="shield-check" class="w-3.5 h-3.5"></i></span>
+        </div>
+        <div class="flex items-baseline justify-between mt-1.5">
+          <span id="kpiSafe" class="kpi-value text-emerald-500">0</span>
+          <span id="kpiSafePct" class="text-xs font-mono font-semibold text-emerald-500">0%</span>
+        </div>
+      </div>
+
+      <div id="kpiWarnCard" class="kpi-card">
+        <div class="flex items-center justify-between">
+          <span class="kpi-label">Cảnh báo</span>
+          <span class="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center"><i data-lucide="activity" class="w-3.5 h-3.5"></i></span>
+        </div>
+        <div class="flex items-baseline justify-between mt-1.5">
+          <span id="kpiWarning" class="kpi-value text-amber-500">0</span>
+          <span class="text-[11px] text-subtle">Vùng vẫy</span>
+        </div>
+      </div>
+
+      <div id="kpiDangerCard" class="kpi-card">
+        <div class="flex items-center justify-between">
+          <span class="kpi-label">Khẩn cấp</span>
+          <span class="w-7 h-7 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center"><i data-lucide="siren" class="w-3.5 h-3.5"></i></span>
+        </div>
+        <div class="flex items-baseline justify-between mt-1.5">
+          <span id="kpiDanger" class="kpi-value text-red-500">0</span>
+          <span class="text-[11px] text-subtle">&gt;<span id="kpiThreshold">10</span>s / SOS</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 CỘT CHÍNH: TRÁI (HỒ BƠI / THẺ) — PHẢI (CẢNH BÁO + GIẢ LẬP DEMO) -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+      <!-- CỘT TRÁI -->
+      <div class="lg:col-span-8 xl:col-span-9 panel overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5 panel-border-b">
+          <div class="flex items-center gap-2">
+            <div class="seg">
+              <button id="tabPool" class="seg-btn active"><i data-lucide="map" class="w-3.5 h-3.5"></i> Hồ bơi</button>
+              <button id="tabCards" class="seg-btn"><i data-lucide="layout-grid" class="w-3.5 h-3.5"></i> Học sinh <span id="tabCount" class="seg-count">0</span></button>
+            </div>
+            <div class="seg">
+              <button id="modeHardware" class="seg-btn active" title="Chỉ hiển thị thiết bị ESP32 thật đang kết nối"><i data-lucide="cpu" class="w-3.5 h-3.5"></i> ESP32 Thật</button>
+              <button id="modeDemo" class="seg-btn" title="Chạy giả lập học sinh để trình diễn Demo"><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i> Demo</button>
+            </div>
+            <button id="btnPoolSize" type="button" class="px-2.5 py-1.5 rounded-xl btn-soft text-xs font-semibold inline-flex items-center gap-1.5" title="Điều chỉnh kích thước & diện tích hồ bơi">
+              <i data-lucide="ruler" class="w-3.5 h-3.5 text-ocean-400"></i>
+              <span id="btnPoolSizeLabel" class="font-mono">25×12.5m (312.5m²)</span>
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="filterLane" class="field">
+              <option value="ALL">Tất cả làn</option>
+              <option value="1">Làn 1</option><option value="2">Làn 2</option><option value="3">Làn 3</option>
+              <option value="4">Làn 4</option><option value="5">Làn 5</option>
+              <option value="DECK">Trên bờ</option>
+            </select>
+            <select id="filterRisk" class="field">
+              <option value="ALL">Mọi trạng thái</option>
+              <option value="DANGER">Nguy hiểm</option>
+              <option value="WARNING">Cảnh báo</option>
+              <option value="SAFE">An toàn</option>
+            </select>
+            <input id="searchInput" class="field w-36" placeholder="Tìm tên, mã…">
+          </div>
+        </div>
+
+        <!-- SƠ ĐỒ HỒ BƠI -->
+        <div id="viewPool" class="p-3.5">
+          <div class="pool-frame">
+            <div class="pool-body">
+              <div class="pool-end pool-end-left">
+                <div class="block">1</div><div class="block">2</div><div class="block">3</div><div class="block">4</div><div class="block">5</div>
+              </div>
+
+              <div id="poolWater" class="pool-water">
+                <div class="lane-line" style="top:10%"></div><div class="lane-line" style="top:30%"></div>
+                <div class="lane-line" style="top:50%"></div><div class="lane-line" style="top:70%"></div>
+                <div class="lane-line" style="top:90%"></div>
+
+                <div class="lane-rope" style="top:20%"></div><div class="lane-rope" style="top:40%"></div>
+                <div class="lane-rope" style="top:60%"></div><div class="lane-rope" style="top:80%"></div>
+
+                <div class="depth-divider"></div>
+                <div id="tagShallowDepth" class="depth-tag left-3">Nông • 1.2m</div>
+                <div id="tagDeepDepth" class="depth-tag right-3">Sâu • 1.8m</div>
+
+                <div id="swimmersLayer" class="absolute inset-0"></div>
+                <div id="poolEmptyState" class="hidden absolute inset-0 z-10 flex items-center justify-center p-4">
+                  <div class="bg-[#07122e]/85 backdrop-blur border border-white/15 rounded-2xl px-5 py-4 text-center max-w-sm space-y-2.5 shadow-xl">
+                    <div class="w-10 h-10 mx-auto rounded-xl bg-sky-500/15 text-sky-300 flex items-center justify-center">
+                      <i data-lucide="wifi" class="w-5 h-5"></i>
+                    </div>
+                    <div class="text-sm font-bold text-white">Đang chờ thiết bị ESP32 kết nối…</div>
+                    <p class="text-xs text-slate-300">Chế độ <b>ESP32 Thật</b> chỉ hiển thị các đai ngực thực tế đang gửi dữ liệu tới máy chủ.</p>
+                    <div class="flex items-center justify-center gap-2 pt-1">
+                      <button id="btnEmptyOpenDocs" type="button" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold">Hướng dẫn nối ESP32</button>
+                      <button id="btnEmptySwitchDemo" type="button" class="px-3 py-1.5 rounded-lg bg-ocean-500 hover:bg-ocean-600 text-white text-xs font-bold">Bật giả lập Demo</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pool-deck">
+              <span class="text-[11px] font-semibold text-slate-300 shrink-0">Trên bờ:</span>
+              <div id="deckList" class="flex flex-wrap gap-1.5 flex-1"></div>
+              <div class="hidden sm:flex items-center gap-3 text-[11px] text-slate-300 shrink-0">
+                <span class="legend"><span class="legend-dot bg-emerald-500"></span>Tốt</span>
+                <span class="legend"><span class="legend-dot bg-amber-400"></span>Chới với</span>
+                <span class="legend"><span class="legend-dot bg-red-500"></span>Nguy hiểm</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dải thông tin nhanh của ca học & thiết bị -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
+            <div class="stat-box flex items-center justify-between py-2">
+              <span class="text-subtle">Thời lượng ca</span>
+              <span id="sessionTimer" class="font-mono font-bold text-main">00:00:00</span>
+            </div>
+            <div class="stat-box flex items-center justify-between py-2">
+              <span class="text-subtle">Nước bể</span>
+              <span id="infoWaterEnv" class="font-semibold text-main">28.2°C • pH 7.3</span>
+            </div>
+            <div class="stat-box flex items-center justify-between py-2">
+              <span class="text-subtle">Pin đai TB</span>
+              <span id="infoAvgBattery" class="font-mono font-bold text-emerald-500">92%</span>
+            </div>
+            <div class="stat-box flex items-center justify-between py-2">
+              <span class="text-subtle">Mật độ đông nhất</span>
+              <span id="infoBusiestLane" class="font-semibold text-main">Làn 3</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LƯỚI THẺ HỌC SINH -->
+        <div id="viewCards" class="hidden p-3.5">
+          <div id="cardsGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI: CHỈ 2 KHỐI GỌN GÀNG, KHÔNG ĐÈ NỘI DUNG -->
+      <aside class="lg:col-span-4 xl:col-span-3 space-y-4">
+
+        <!-- Khối 1: Trạng thái cảnh báo + Điều phối nhanh -->
+        <div class="panel">
+          <div class="panel-head">
+            <h3 class="flex items-center gap-2"><i data-lucide="bell" class="w-4 h-4 text-ocean-500"></i> Trạng thái giám sát</h3>
+            <span id="attentionCount" class="chip chip-neutral">0</span>
+          </div>
+          <div id="attentionList" class="p-3 space-y-2 max-h-[200px] overflow-y-auto"></div>
+          <div class="px-3 pb-3 pt-1 grid grid-cols-3 gap-1.5">
+            <button id="btnWhistle" type="button" class="py-1.5 px-2 rounded-lg btn-soft text-[11px] font-semibold flex items-center justify-center gap-1" title="Phát tiếng còi giáo viên gọi tập hợp">
+              <i data-lucide="megaphone" class="w-3.5 h-3.5 text-ocean-500"></i> Tuýt còi
+            </button>
+            <button id="btnAllDeck" type="button" class="py-1.5 px-2 rounded-lg btn-soft text-[11px] font-semibold flex items-center justify-center gap-1" title="Cho toàn bộ học sinh lên bờ nghỉ giải lao">
+              <i data-lucide="arrow-up-from-line" class="w-3.5 h-3.5 text-amber-500"></i> Lên bờ
+            </button>
+            <button id="btnAllWater" type="button" class="py-1.5 px-2 rounded-lg btn-soft text-[11px] font-semibold flex items-center justify-center gap-1" title="Cho toàn bộ học sinh xuống bể tập bơi">
+              <i data-lucide="waves" class="w-3.5 h-3.5 text-sky-500"></i> Xuống bể
+            </button>
+          </div>
+        </div>
+
+        <!-- Khối 2: Bảng giả lập Demo (gắn cố định trong cột phải) -->
+        <div class="panel">
+          <div class="panel-head">
+            <h3 class="flex items-center gap-2"><i data-lucide="flask-conical" class="w-4 h-4 text-amber-400"></i> Giả lập Demo</h3>
+            <span id="simModeLabel" class="chip bg-emerald-500/15 text-emerald-500">Bình thường</span>
+          </div>
+          <div class="p-3 space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <button data-sim="normal" class="sim-btn"><i data-lucide="smile" class="w-4 h-4 text-emerald-500"></i>Bình thường</button>
+              <button data-sim="sos" class="sim-btn"><i data-lucide="radio" class="w-4 h-4 text-red-500"></i>Nút SOS</button>
+              <button data-sim="silent_drowning" class="sim-btn"><i data-lucide="timer" class="w-4 h-4 text-orange-500"></i>Đuối nước</button>
+              <button data-sim="struggling" class="sim-btn"><i data-lucide="waves" class="w-4 h-4 text-amber-500"></i>Vùng vẫy</button>
+            </div>
+            <label class="block space-y-1 text-xs">
+              <span class="text-muted">Học sinh thử nghiệm</span>
+              <select id="simTarget" class="field w-full"></select>
+            </label>
+            <label class="block space-y-1 text-xs">
+              <div class="flex justify-between">
+                <span class="text-muted">Ngưỡng bất động</span>
+                <span id="thresholdValue" class="font-mono font-bold text-main">10s</span>
+              </div>
+              <input id="thresholdSlider" type="range" min="5" max="30" value="10" class="w-full accent-[#5170FF]">
+            </label>
+            <button id="btnTestSound" type="button" class="w-full py-1.5 rounded-lg btn-soft text-xs font-semibold flex items-center justify-center gap-1.5">
+              <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-amber-400"></i> Thử tiếng còi báo động
+            </button>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- ============ MODAL BÁO ĐỘNG KHẨN CẤP ============ -->
+  <div id="emergencyModal" class="modal hidden">
+    <div class="modal-card max-w-md border-red-500/80 p-0 overflow-hidden">
+      <div class="bg-red-600 text-white px-6 py-4 text-center">
+        <i data-lucide="siren" class="w-8 h-8 mx-auto mb-1.5"></i>
+        <h2 class="text-xl font-extrabold">CẢNH BÁO ĐUỐI NƯỚC KHẨN CẤP!</h2>
+        <p id="emReason" class="text-xs text-red-100 mt-1"></p>
+      </div>
+      <div class="p-5 space-y-3.5">
+        <div class="flex items-center justify-between">
+          <div>
+            <div id="emName" class="text-lg font-bold text-main"></div>
+            <div id="emClass" class="text-xs text-muted"></div>
+          </div>
+          <span id="emId" class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg stat-box"></span>
+        </div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="stat-box"><div class="stat-label">Vị trí</div><div id="emLocation" class="stat-value text-amber-500"></div></div>
+          <div class="stat-box"><div class="stat-label">Bất động</div><div id="emStill" class="stat-value text-red-500"></div></div>
+        </div>
+        <div id="emInstruction" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-medium dark-amber-text"></div>
+        <div class="text-xs text-muted">Phụ huynh: <span id="emContact" class="text-main font-medium"></span></div>
+        <input id="emNotes" class="field w-full" placeholder="Ghi chú cứu hộ (tùy chọn)…">
+        <div class="flex gap-2">
+          <button id="btnEmResolve" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm">XÁC NHẬN ĐÃ CỨU HỘ / TẮT CHUÔNG</button>
+          <button id="btnEmMute" class="py-2.5 px-3 rounded-xl btn-soft text-xs font-semibold">Tắt tạm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL CHI TIẾT HỌC SINH ============ -->
+  <div id="detailModal" class="modal hidden">
+    <div class="modal-card max-w-xl">
+      <button data-close="detailModal" class="modal-x"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="flex items-center gap-3 pr-8">
+        <div id="dtAvatar" class="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base">--</div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h3 id="dtName" class="text-base font-bold text-main"></h3>
+            <span id="dtBadge" class="chip"></span>
+            <span id="dtHwBadge" class="hidden chip bg-sky-500/15 text-sky-400 font-mono">ESP32 LIVE</span>
+          </div>
+          <div class="text-xs text-muted"><span id="dtClass"></span> • <span id="dtId" class="font-mono text-main"></span> • <span id="dtLocation"></span></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
+        <div class="stat-box"><div class="stat-label">Nước</div><div id="dtWater" class="stat-value"></div></div>
+        <div class="stat-box"><div class="stat-label">Góc nghiêng</div><div id="dtTilt" class="stat-value"></div></div>
+        <div class="stat-box"><div class="stat-label">Bất động</div><div id="dtStill" class="stat-value"></div></div>
+        <div class="stat-box"><div class="stat-label">Tim • Pin</div><div id="dtVitals" class="stat-value"></div></div>
+      </div>
+
+      <div class="mt-3.5 rounded-2xl chart-box p-3.5">
+        <div class="flex items-center justify-between text-xs mb-2">
+          <span class="font-semibold text-main">Gia tốc MPU6050 (g)</span>
+          <div class="flex gap-2.5 font-mono text-[11px]">
+            <span class="text-red-500">X <b id="dtAx">0</b></span>
+            <span class="text-emerald-500">Y <b id="dtAy">0</b></span>
+            <span class="text-sky-500">Z <b id="dtAz">0</b></span>
+            <span class="text-muted">|a| <b id="dtMag" class="text-main">0</b>g</span>
+          </div>
+        </div>
+        <div class="h-44"><canvas id="accelChart"></canvas></div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 mt-3.5 text-xs text-muted">
+        <a id="dtCallLink" href="tel:0900000000" class="inline-flex items-center gap-1.5 text-ocean-500 hover:underline font-semibold">
+          <i data-lucide="phone-call" class="w-3.5 h-3.5"></i> <span id="dtContact">—</span>
+        </a>
+        <div class="flex items-center gap-2">
+          <select id="dtLaneSelect" class="field py-1 text-xs" title="Chuyển làn bơi">
+            <option value="1">Làn 1</option><option value="2">Làn 2</option><option value="3">Làn 3</option>
+            <option value="4">Làn 4</option><option value="5">Làn 5</option>
+          </select>
+          <button id="btnDtToggleWater" class="px-3 py-1.5 rounded-lg btn-soft font-semibold">Đưa lên bờ</button>
+          <button id="btnDtSos" class="px-3 py-1.5 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 font-semibold">Thử SOS</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL NHẬT KÝ ============ -->
+  <div id="incidentsModal" class="modal hidden">
+    <div class="modal-card max-w-xl">
+      <button data-close="incidentsModal" class="modal-x"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="flex items-center justify-between gap-3 pr-8">
+        <div>
+          <h3 class="text-base font-bold text-main">Nhật ký cứu hộ</h3>
+          <p id="incidentsSummary" class="text-xs text-muted mt-0.5"></p>
+        </div>
+        <a href="/api/incidents/csv" download class="px-3 py-1.5 rounded-lg bg-ocean-500 hover:bg-ocean-600 text-white text-xs font-semibold">Xuất CSV</a>
+      </div>
+      <div id="incidentsList" class="mt-3.5 space-y-2 max-h-[60vh] overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL API & ESP32 ============ -->
+  <div id="docsModal" class="modal hidden">
+    <div class="modal-card max-w-2xl max-h-[88vh] flex flex-col">
+      <button data-close="docsModal" class="modal-x"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <h3 class="text-base font-bold text-main pr-8">API Endpoint & Mã nguồn ESP32</h3>
+
+      <div class="seg mt-3 self-start">
+        <button data-doctab="api" class="seg-btn active">API & JSON</button>
+        <button data-doctab="code" class="seg-btn">Code ESP32</button>
+        <button data-doctab="test" class="seg-btn">Gửi thử</button>
+      </div>
+
+      <div class="mt-3.5 overflow-y-auto flex-1 space-y-3">
+        <div id="docTabApi" class="space-y-3 text-xs">
+          <div class="grid sm:grid-cols-2 gap-2">
+            <div class="stat-box"><b class="text-main">MPU6050:</b> SDA GPIO21, SCL GPIO22</div>
+            <div class="stat-box"><b class="text-main">Cảm biến nước:</b> GPIO34 • <b class="text-main">SOS:</b> GPIO13</div>
+          </div>
+          <div class="flex justify-between font-semibold text-main">
+            <span>POST /api/telemetry</span>
+            <button id="btnCopyJson" class="text-ocean-500 hover:underline">Sao chép JSON</button>
+          </div>
+          <pre id="sampleJsonPre" class="code">{
+  "deviceId": "AQUA-01",
+  "studentName": "Nguyễn Văn An",
+  "inWater": true,
+  "motionState": "STILL",
+  "stillDuration": 12,
+  "sosPressed": false,
+  "accel": { "x": 0.05, "y": 0.12, "z": 0.98 }
+}</pre>
+        </div>
+
+        <div id="docTabCode" class="hidden space-y-2 text-xs">
+          <div class="flex justify-between items-center">
+            <span class="text-muted font-mono">esp32/esp32_aquasentinel.ino</span>
+            <button id="btnCopyIno" class="px-3 py-1 rounded-lg bg-ocean-500 text-white font-semibold">Sao chép code</button>
+          </div>
+          <pre id="esp32CodePre" class="code max-h-[50vh] overflow-y-auto">Đang tải…</pre>
+        </div>
+
+        <div id="docTabTest" class="hidden space-y-2.5 text-xs">
+          <textarea id="testPayloadInput" rows="9" class="code w-full focus:outline-none">{
+  "deviceId": "AQUA-01",
+  "studentName": "Nguyễn Văn An",
+  "inWater": true,
+  "motionState": "STILL",
+  "stillDuration": 12,
+  "sosPressed": false,
+  "accel": { "x": 0.04, "y": 0.08, "z": 0.99 }
+}</textarea>
+          <div class="flex items-center justify-between gap-2">
+            <span id="testResultMsg" class="text-muted font-mono"></span>
+            <button id="btnSendTestPayload" class="px-4 py-2 rounded-xl bg-ocean-500 text-white font-bold">Gửi POST</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL ĐIỀU CHỈNH DIỆN TÍCH HỒ BƠI ============ -->
+  <div id="poolSizeModal" class="modal hidden">
+    <div class="modal-card max-w-md p-5 space-y-4">
+      <button data-close="poolSizeModal" class="modal-x"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <div class="pr-8">
+        <h3 class="text-base font-bold text-main flex items-center gap-2"><i data-lucide="ruler" class="w-4 h-4 text-ocean-400"></i> Điều chỉnh diện tích hồ bơi</h3>
+        <p class="text-xs text-muted mt-0.5">Chọn mẫu bể có sẵn hoặc nhập kích thước thực tế của trường</p>
+      </div>
+
+      <!-- 3 mẫu kích thước chọn nhanh -->
+      <div class="grid grid-cols-3 gap-2">
+        <button type="button" data-preset="12,6" class="sim-btn">
+          <span class="font-bold">Bể nhỏ</span>
+          <span class="text-[10px] text-muted font-mono">12×6m • 72m²</span>
+        </button>
+        <button type="button" data-preset="25,12.5" class="sim-btn">
+          <span class="font-bold">Chuẩn trường</span>
+          <span class="text-[10px] text-muted font-mono">25×12.5m</span>
+        </button>
+        <button type="button" data-preset="50,25" class="sim-btn">
+          <span class="font-bold">Thi đấu</span>
+          <span class="text-[10px] text-muted font-mono">50×25m</span>
+        </button>
+      </div>
+
+      <!-- Nhập tự do + thanh kéo -->
+      <div class="space-y-3">
+        <label class="block space-y-1 text-xs">
+          <div class="flex justify-between">
+            <span class="text-muted font-semibold">Chiều dài bể (m)</span>
+            <input id="inpPoolLength" type="number" step="0.5" min="8" max="100" value="25" class="field w-20 py-1 text-right font-mono font-bold">
+          </div>
+          <input id="rngPoolLength" type="range" min="10" max="50" step="0.5" value="25" class="w-full accent-[#5170FF]">
+        </label>
+
+        <label class="block space-y-1 text-xs">
+          <div class="flex justify-between">
+            <span class="text-muted font-semibold">Chiều rộng bể (m)</span>
+            <input id="inpPoolWidth" type="number" step="0.5" min="4" max="50" value="12.5" class="field w-20 py-1 text-right font-mono font-bold">
+          </div>
+          <input id="rngPoolWidth" type="range" min="5" max="25" step="0.5" value="12.5" class="w-full accent-[#5170FF]">
+        </label>
+      </div>
+
+      <!-- Kết quả tính diện tích & mật độ -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div class="stat-box">
+          <div class="stat-label">Tổng diện tích mặt nước</div>
+          <div id="previewPoolArea" class="stat-value text-ocean-400 font-mono">312.5 m²</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Không gian trung bình</div>
+          <div id="previewPoolDensity" class="stat-value text-emerald-500 font-mono">—</div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-1">
+        <button type="button" data-close="poolSizeModal" class="px-4 py-2 rounded-xl btn-soft text-xs font-semibold">Hủy</button>
+        <button id="btnApplyPoolSize" type="button" class="px-5 py-2 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white text-xs font-bold">Áp dụng kích thước</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MÀN HÌNH THIẾT LẬP KHỞI ĐỘNG (GỌN GÀNG) ============ -->
+  <div id="setupOverlay" class="modal z-[90]">
+    <div class="modal-card max-w-md p-0 overflow-hidden">
+      <div class="px-5 py-4 bg-gradient-to-r from-[#000052] to-[#5170FF] text-white flex items-center justify-between">
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wider text-amber-300">AquaVix • STEMPETITION</div>
+          <h2 class="text-lg font-extrabold">Thiết lập AquaSentinel</h2>
+        </div>
+        <button id="btnCloseSetup" type="button" class="hidden p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="setupForm" novalidate class="p-5 space-y-3.5">
+        <label class="block space-y-1">
+          <span class="text-xs font-semibold text-muted">Nguồn dữ liệu giám sát</span>
+          <select id="inpDataMode" class="field w-full py-2 font-semibold">
+            <option value="hardware">ESP32 Thật (Chỉ hiển thị mạch đang kết nối)</option>
+            <option value="demo">Giả lập Demo (Tự chạy mô phỏng trình diễn)</option>
+          </select>
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-muted">Lớp học</span>
+            <input id="inpClassName" type="text" class="field w-full py-2" value="Lớp 10A1 & 10A2">
+          </label>
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-muted">Người trực</span>
+            <input id="inpSupervisor" type="text" class="field w-full py-2" value="Thầy Trần Hữu Nghĩa">
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-muted">Sĩ số (5–40 HS)</span>
+            <input id="inpStudentCount" type="number" min="5" max="40" class="field w-full py-2 font-mono font-bold" value="30">
+          </label>
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-muted">Ngưỡng bất động (s)</span>
+            <input id="inpThreshold" type="number" min="5" max="30" class="field w-full py-2 font-mono font-bold" value="10">
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-muted">Nước nông / sâu (m)</span>
+            <div class="flex gap-1.5">
+              <input id="inpShallow" type="number" step="0.1" class="field w-1/2 py-2 font-mono" value="1.2">
+              <input id="inpDeep" type="number" step="0.1" class="field w-1/2 py-2 font-mono" value="1.8">
+            </div>
+          </label>
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-muted">Giao diện</span>
+            <select id="inpTheme" class="field w-full py-2">
+              <option value="dark">Tối (Trong nhà)</option>
+              <option value="light">Sáng (Ngoài trời)</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="flex items-center gap-2 text-xs text-main cursor-pointer pt-1">
+          <input id="inpAudioOn" type="checkbox" checked class="w-4 h-4 accent-[#5170FF]">
+          <span>Bật sẵn còi báo động khẩn cấp</span>
+        </label>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button id="btnUseDefault" type="button" class="px-3.5 py-2 rounded-xl btn-soft text-xs font-semibold">Mặc định</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-ocean-500 hover:bg-ocean-600 text-white text-sm font-bold">Bắt đầu giám sát</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,637 @@
+/* AquaSentinel – Hệ thống thiết kế UI cao cấp (Medical / IoT Safety Aesthetic)
+ * Tinh tế, chiều sâu bề mặt mượt mà, không hiệu ứng chớp nháy rối mắt.
+ */
+
+:root {
+  --bg-page: #070b18;
+  --bg-grad-1: rgba(81, 112, 255, 0.16);
+  --bg-grad-2: rgba(56, 189, 248, 0.08);
+  --bg-header: rgba(10, 15, 32, 0.82);
+  --bg-panel: rgba(16, 23, 46, 0.78);
+  --bg-panel-solid: #10172e;
+  --bg-modal: #0f162d;
+  --bg-soft: rgba(255, 255, 255, 0.045);
+  --bg-soft-hover: rgba(255, 255, 255, 0.09);
+  --bg-field: rgba(8, 12, 26, 0.75);
+  --bg-card: rgba(11, 17, 36, 0.72);
+  --bg-code: #080d1d;
+  --border: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --highlight-top: rgba(255, 255, 255, 0.06);
+  --shadow-panel: 0 10px 30px -10px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--highlight-top);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --code-color: #6ee7b7;
+  --team-bg: rgba(81, 112, 255, 0.14);
+  --team-text: #a5b4fc;
+  --team-border: rgba(81, 112, 255, 0.32);
+}
+
+body.light {
+  --bg-page: #f3f6fc;
+  --bg-grad-1: rgba(81, 112, 255, 0.08);
+  --bg-grad-2: rgba(56, 189, 248, 0.07);
+  --bg-header: rgba(255, 255, 255, 0.88);
+  --bg-panel: #ffffff;
+  --bg-panel-solid: #ffffff;
+  --bg-modal: #ffffff;
+  --bg-soft: #f1f5f9;
+  --bg-soft-hover: #e2e8f0;
+  --bg-field: #f8fafc;
+  --bg-card: #f8fafc;
+  --bg-code: #0f172a;
+  --border: #e5eaf4;
+  --border-strong: #cbd5e1;
+  --highlight-top: rgba(255, 255, 255, 0.9);
+  --shadow-panel: 0 6px 24px -6px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-subtle: #64748b;
+  --code-color: #6ee7b7;
+  --team-bg: rgba(81, 112, 255, 0.1);
+  --team-text: #3555e0;
+  --team-border: rgba(81, 112, 255, 0.28);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background:
+    radial-gradient(900px 420px at 15% -8%, var(--bg-grad-1), transparent 65%),
+    radial-gradient(750px 380px at 90% -5%, var(--bg-grad-2), transparent 60%),
+    var(--bg-page);
+  background-attachment: fixed;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.text-main { color: var(--text-main); }
+.text-muted { color: var(--text-muted); }
+.text-subtle { color: var(--text-subtle); }
+.border-soft { border-color: var(--border); }
+.divide-soft > :not([hidden]) ~ :not([hidden]) { border-color: var(--border); }
+.table-head { background: var(--bg-soft); color: var(--text-muted); }
+.badge-team {
+  background: var(--team-bg);
+  color: var(--team-text);
+  border: 1px solid var(--team-border);
+}
+.app-header {
+  background: var(--bg-header);
+  border-color: var(--border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.conn-box {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+}
+.chart-box {
+  background: var(--bg-field);
+  border: 1px solid var(--border);
+}
+.dark-amber-text { color: #fde68a; }
+body.light .dark-amber-text { color: #92400e; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #5170ff; }
+
+/* ---------- Bề mặt Panel & Nút ---------- */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(12px);
+}
+
+.panel-border-b { border-bottom: 1px solid var(--border); }
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-head h3 {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.015em;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: background .15s ease, color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.icon-btn:hover {
+  background: var(--bg-soft-hover);
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+.icon-btn:active { transform: scale(0.95); }
+.icon-btn.off {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.btn-soft {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+}
+.btn-soft:hover {
+  background: var(--bg-soft-hover);
+  border-color: var(--border-strong);
+}
+.btn-soft:active { transform: scale(0.98); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 99px;
+  letter-spacing: 0.01em;
+}
+.chip-neutral { background: var(--bg-soft); color: var(--text-muted); }
+
+.field {
+  background: var(--bg-field);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  color: var(--text-main);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.field:hover { border-color: var(--border-strong); }
+.field:focus {
+  border-color: #5170ff;
+  box-shadow: 0 0 0 3px rgba(81, 112, 255, 0.18);
+}
+
+/* ---------- 4 Thẻ KPI thanh thoát ---------- */
+.kpi-card {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-panel);
+  transition: border-color .2s ease, background .2s ease, transform .15s ease;
+}
+.kpi-card:hover {
+  border-color: var(--border-strong);
+}
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-card.is-warning {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(245, 158, 11, 0.04));
+}
+.kpi-card.is-danger {
+  border-color: rgba(239, 68, 68, 0.7);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.05));
+}
+
+/* ---------- Segmented Tabs ---------- */
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--bg-field);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all .15s ease;
+}
+.seg-btn:hover { color: var(--text-main); }
+.seg-btn.active {
+  background: linear-gradient(135deg, #5170ff, #4a7ff7);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(81, 112, 255, 0.32);
+}
+.seg-count {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 6px;
+  border-radius: 99px;
+}
+
+.legend { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 99px; }
+
+/* ---------- Sơ đồ Hồ bơi (Hoàn thiện mượt mà, có chiều sâu) ---------- */
+.pool-frame {
+  border-radius: 18px;
+  background: linear-gradient(180deg, #162044 0%, #0f1733 100%);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 10px 10px 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+body.light .pool-frame {
+  background: linear-gradient(180deg, #e2ebf8 0%, #d4e2f4 100%);
+  border-color: #cbd5e1;
+}
+body.light .pool-deck { color: #334155; }
+body.light .pool-deck span { color: #334155; }
+body.light .deck-chip {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.pool-body { display: flex; align-items: stretch; gap: 0; }
+.pool-end {
+  width: 32px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #1e2b58 0%, #162045 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  padding: 6px 0;
+}
+.pool-end-left {
+  border-radius: 12px 0 0 12px;
+  border-right: 2px solid rgba(251, 191, 36, 0.65);
+}
+.pool-end .block {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pool-water {
+  position: relative;
+  flex: 1;
+  height: 375px;
+  border-radius: 0 12px 12px 0;
+  background:
+    radial-gradient(circle at 25% 30%, rgba(125, 211, 252, 0.22), transparent 55%),
+    linear-gradient(90deg, #126fa3 0%, #0e5c94 46%, #0c4a82 54%, #093b70 100%);
+  box-shadow: inset 0 4px 18px rgba(0, 12, 40, 0.35), inset 0 -4px 14px rgba(0, 12, 40, 0.25);
+  overflow: hidden;
+}
+
+/* Vạch dẫn hướng đáy bể tinh tế */
+.lane-line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+}
+.lane-line::before, .lane-line::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  width: 2px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+}
+.lane-line::before { left: 0; }
+.lane-line::after { right: 0; }
+
+/* Dây phao ngăn làn mảnh, mềm */
+.lane-rope {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  transform: translateY(-50%);
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(248, 113, 113, 0.85) 0 10px,
+    rgba(248, 250, 252, 0.85) 10px 20px,
+    rgba(96, 165, 250, 0.85) 20px 30px,
+    rgba(248, 250, 252, 0.85) 30px 40px
+  );
+  opacity: 0.72;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.depth-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1.5px dashed rgba(253, 224, 71, 0.45);
+}
+.depth-tag {
+  position: absolute;
+  bottom: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #e0f2fe;
+  background: rgba(7, 18, 46, 0.55);
+  backdrop-filter: blur(6px);
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.pool-deck {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 11px;
+  flex-wrap: wrap;
+}
+.deck-chip {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  transition: background .15s;
+}
+.deck-chip:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* Chấm học sinh trên mặt nước */
+.swimmer {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: left .9s linear, top .4s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+.swimmer-dot {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  font-family: "JetBrains Mono", monospace;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 3px 10px rgba(0, 10, 35, 0.4);
+  transition: background .2s ease, transform .15s ease;
+}
+.swimmer[data-dir="1"] .swimmer-dot::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  border: 3.5px solid transparent;
+  border-left-color: rgba(255, 255, 255, 0.85);
+}
+.swimmer[data-dir="-1"] .swimmer-dot::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  border: 3.5px solid transparent;
+  border-right-color: rgba(255, 255, 255, 0.85);
+}
+.swimmer[data-level="DANGER"] .swimmer-dot::after { display: none; }
+
+.swimmer:hover .swimmer-dot { transform: scale(1.16); }
+.swimmer-label {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(9, 14, 32, 0.9);
+  color: #f8fafc;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity .15s;
+  pointer-events: none;
+}
+.swimmer:hover .swimmer-label { opacity: 1; }
+.swimmer:hover { z-index: 30; }
+
+.swimmer[data-level="SAFE"] .swimmer-dot {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+.swimmer[data-level="WARNING"] { z-index: 20; }
+.swimmer[data-level="WARNING"] .swimmer-dot {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1c1917;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.32), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.swimmer[data-level="WARNING"] .swimmer-label {
+  opacity: 1;
+  background: #78350f;
+  color: #fef3c7;
+}
+.swimmer[data-level="DANGER"] { z-index: 25; }
+.swimmer[data-level="DANGER"] .swimmer-dot {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #f87171, #dc2626);
+  box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.35), 0 0 0 11px rgba(239, 68, 68, 0.14);
+}
+.swimmer[data-level="DANGER"] .swimmer-label {
+  opacity: 1;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ---------- Cảnh báo & Thẻ học sinh ---------- */
+.alert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  width: 100%;
+  text-align: left;
+  transition: background .15s;
+}
+.alert-row:hover { background: var(--bg-soft-hover); }
+.alert-row.danger {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.12);
+}
+.alert-row.warning {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.s-card {
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: border-color .2s ease, transform .15s ease;
+}
+.s-card:hover { border-color: rgba(81, 112, 255, 0.45); }
+.s-card.danger {
+  border-color: rgba(239, 68, 68, 0.65);
+  background: rgba(239, 68, 68, 0.1);
+}
+.s-card.warning {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.08);
+}
+.s-card.deck { opacity: 0.72; }
+.mini {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 8px;
+}
+.mini-l { font-size: 10px; color: var(--text-subtle); }
+.mini-v { font-size: 12.5px; font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; }
+
+/* ---------- Nút Giả lập ---------- */
+.sim-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border-radius: 13px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  transition: all .15s ease;
+}
+.sim-btn:hover {
+  background: var(--bg-soft-hover);
+  border-color: var(--border-strong);
+}
+.sim-btn:active { transform: scale(0.97); }
+.sim-btn.active {
+  border-color: #5170ff;
+  background: rgba(81, 112, 255, 0.16);
+  color: #5170ff;
+  box-shadow: 0 0 0 1px rgba(81, 112, 255, 0.25);
+}
+body:not(.light) .sim-btn.active { color: #fff; }
+
+/* ---------- Modal ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(4, 8, 22, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal.hidden { display: none; }
+.modal-card {
+  position: relative;
+  width: 100%;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 var(--highlight-top);
+}
+.modal-x {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 6px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  transition: background .15s, color .15s;
+}
+.modal-x:hover { background: var(--bg-soft-hover); color: var(--text-main); }
+
+.stat-box {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 9px 12px;
+  color: var(--text-main);
+}
+.stat-label { font-size: 11px; color: var(--text-subtle); }
+.stat-value { font-size: 13.5px; font-weight: 700; margin-top: 2px; }
+
+.code {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 13px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  color: var(--code-color);
+  overflow-x: auto;
+  line-height: 1.65;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  background: rgba(15, 23, 48, 0.94);
+  color: #f8fafc;
+  border: 1px solid rgba(81, 112, 255, 0.45);
+  backdrop-filter: blur(10px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
