@@ -309,18 +309,145 @@ body.light .deck-chip {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+}
+.pool-end .block.lane-warning {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: rgba(251, 191, 36, 0.8);
+  color: #fef3c7;
+}
+.pool-end .block.lane-danger {
+  background: #dc2626;
+  border-color: #fca5a5;
+  color: #fff;
+  transform: scale(1.12);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.7);
+}
+
+.pool-ruler {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 4;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(224, 242, 254, 0.65);
+  text-shadow: 0 1px 2px rgba(0, 10, 30, 0.6);
 }
 
 .pool-water {
   position: relative;
   flex: 1;
-  height: 375px;
+  height: 385px;
   border-radius: 0 12px 12px 0;
-  background:
-    radial-gradient(circle at 25% 30%, rgba(125, 211, 252, 0.22), transparent 55%),
-    linear-gradient(90deg, #126fa3 0%, #0e5c94 46%, #0c4a82 54%, #093b70 100%);
+  background: linear-gradient(90deg,
+    #1898c9 0%, #1484b5 33.33%,
+    #0d5f99 33.33%, #0a5187 66.66%,
+    #073566 66.66%, #04244a 100%);
   box-shadow: inset 0 4px 18px rgba(0, 12, 40, 0.35), inset 0 -4px 14px rgba(0, 12, 40, 0.25);
   overflow: hidden;
+}
+
+/* Thanh tiêu đề 3 phân khu mực nước phía trên bể */
+.pool-zones-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 8px 32px;
+}
+.zone-tab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 11px;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.zone-tab-th {
+  background: linear-gradient(135deg, rgba(24, 152, 201, 0.32), rgba(20, 132, 181, 0.18));
+  border-color: rgba(56, 189, 248, 0.45);
+}
+.zone-tab-thcs {
+  background: linear-gradient(135deg, rgba(13, 95, 153, 0.4), rgba(10, 81, 135, 0.22));
+  border-color: rgba(96, 165, 250, 0.45);
+}
+.zone-tab-thpt {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.48), rgba(15, 23, 66, 0.35));
+  border-color: rgba(129, 140, 248, 0.48);
+}
+.zone-tab.zone-warning {
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.35);
+}
+.zone-tab.zone-danger {
+  border-color: #ef4444;
+  background: rgba(220, 38, 38, 0.32);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.45);
+}
+.zone-pill {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+/* 3 khoang nước tách biệt với vách ngăn nổi bật */
+.pool-zones-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  pointer-events: none;
+  z-index: 4;
+}
+.pool-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 4px solid rgba(251, 191, 36, 0.85);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.35);
+  transition: background .25s ease, box-shadow .25s ease;
+}
+.pool-zone:last-child { border-right: none; box-shadow: none; }
+.zone-watermark {
+  font-size: clamp(14px, 2.2vw, 22px);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.11);
+  text-transform: uppercase;
+  user-select: none;
+  text-align: center;
+}
+.pool-zone.zone-warning {
+  background: rgba(245, 158, 11, 0.14);
+  box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.6);
+}
+.pool-zone.zone-danger {
+  background: rgba(239, 68, 68, 0.18);
+  box-shadow: inset 0 0 0 3px rgba(248, 113, 113, 0.9);
+}
+.zone-count {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  background: rgba(7, 18, 46, 0.55);
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+@media (max-width: 640px) {
+  .pool-zones-bar { margin-left: 0; grid-template-columns: 1fr; gap: 5px; }
 }
 
 /* Vạch dẫn hướng đáy bể tinh tế */
@@ -482,6 +609,19 @@ body.light .deck-chip {
   height: 32px;
   background: linear-gradient(135deg, #f87171, #dc2626);
   box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.35), 0 0 0 11px rgba(239, 68, 68, 0.14);
+}
+.swimmer[data-level="DANGER"] .swimmer-dot::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 99px;
+  border: 2px solid rgba(248, 113, 113, 0.85);
+  animation: dangerRipple 1.6s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+  pointer-events: none;
+}
+@keyframes dangerRipple {
+  0% { transform: scale(0.95); opacity: 0.9; }
+  100% { transform: scale(1.95); opacity: 0; }
 }
 .swimmer[data-level="DANGER"] .swimmer-label {
   opacity: 1;

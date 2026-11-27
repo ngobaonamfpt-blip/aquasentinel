@@ -6,6 +6,7 @@
   <title>AquaSentinel – Pool Safety Monitor | AquaVix</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛟</text></svg>">
   <meta name="theme-color" content="#000052">
+  <link rel="manifest" href="/manifest.json">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,7 +30,7 @@
   </script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body class="font-sans antialiased min-h-screen">
 
@@ -69,8 +70,11 @@
         <button id="btnFullscreen" class="icon-btn hidden sm:inline-flex" title="Toàn màn hình">
           <i id="fsIcon" data-lucide="maximize" class="w-4 h-4"></i>
         </button>
-        <button id="btnToggleAudio" class="icon-btn" title="Bật / Tắt còi báo động">
+        <button id="btnToggleAudio" class="icon-btn" title="Bật / Tắt còi báo động (M)">
           <i id="audioIcon" data-lucide="volume-2" class="w-4 h-4"></i>
+        </button>
+        <button id="btnToggleVoice" class="icon-btn" title="Bật / Tắt đọc giọng nói tiếng Việt khi khẩn cấp">
+          <i id="voiceIcon" data-lucide="message-square-warning" class="w-4 h-4"></i>
         </button>
         <button id="btnOpenIncidents" class="icon-btn relative" title="Nhật ký cứu hộ">
           <i data-lucide="clipboard-list" class="w-4 h-4"></i>
@@ -172,11 +176,17 @@
             </button>
           </div>
           <div class="flex flex-wrap items-center gap-2">
+            <select id="filterZone" class="field">
+              <option value="ALL">Tất cả khu (TH/THCS/THPT)</option>
+              <option value="TH">Khu Tiểu học (TH)</option>
+              <option value="THCS">Khu THCS</option>
+              <option value="THPT">Khu THPT</option>
+              <option value="DECK">Trên bờ</option>
+            </select>
             <select id="filterLane" class="field">
               <option value="ALL">Tất cả làn</option>
               <option value="1">Làn 1</option><option value="2">Làn 2</option><option value="3">Làn 3</option>
               <option value="4">Làn 4</option><option value="5">Làn 5</option>
-              <option value="DECK">Trên bờ</option>
             </select>
             <select id="filterRisk" class="field">
               <option value="ALL">Mọi trạng thái</option>
@@ -184,29 +194,66 @@
               <option value="WARNING">Cảnh báo</option>
               <option value="SAFE">An toàn</option>
             </select>
-            <input id="searchInput" class="field w-36" placeholder="Tìm tên, mã…">
+            <input id="searchInput" class="field w-32" placeholder="Tìm tên, mã…">
           </div>
         </div>
 
         <!-- SƠ ĐỒ HỒ BƠI -->
         <div id="viewPool" class="p-3.5">
           <div class="pool-frame">
+            <!-- Thanh tiêu đề 3 phân khu mực nước rõ ràng phía trên bể -->
+            <div class="pool-zones-bar">
+              <div class="zone-tab zone-tab-th" id="zoneTabTH">
+                <div class="flex items-center gap-1.5">
+                  <span class="zone-pill bg-cyan-400/20 text-cyan-200 border border-cyan-300/40">KHU 1</span>
+                  <span class="font-extrabold text-white text-xs sm:text-sm">Tiểu học (TH)</span>
+                </div>
+                <div class="flex items-center gap-2 text-[11px]">
+                  <span id="tagThDepth" class="font-mono font-bold text-cyan-200">Nông • 0.9m</span>
+                  <span id="zoneCountTH" class="zone-count">0 HS</span>
+                </div>
+              </div>
+              <div class="zone-tab zone-tab-thcs" id="zoneTabTHCS">
+                <div class="flex items-center gap-1.5">
+                  <span class="zone-pill bg-sky-400/20 text-sky-200 border border-sky-300/40">KHU 2</span>
+                  <span class="font-extrabold text-white text-xs sm:text-sm">THCS</span>
+                </div>
+                <div class="flex items-center gap-2 text-[11px]">
+                  <span id="tagThcsDepth" class="font-mono font-bold text-sky-200">Trung bình • 1.3m</span>
+                  <span id="zoneCountTHCS" class="zone-count">0 HS</span>
+                </div>
+              </div>
+              <div class="zone-tab zone-tab-thpt" id="zoneTabTHPT">
+                <div class="flex items-center gap-1.5">
+                  <span class="zone-pill bg-indigo-400/25 text-indigo-200 border border-indigo-300/40">KHU 3</span>
+                  <span class="font-extrabold text-white text-xs sm:text-sm">THPT</span>
+                </div>
+                <div class="flex items-center gap-2 text-[11px]">
+                  <span id="tagThptDepth" class="font-mono font-bold text-indigo-200">Sâu • 1.8m</span>
+                  <span id="zoneCountTHPT" class="zone-count">0 HS</span>
+                </div>
+              </div>
+            </div>
+
             <div class="pool-body">
-              <div class="pool-end pool-end-left">
-                <div class="block">1</div><div class="block">2</div><div class="block">3</div><div class="block">4</div><div class="block">5</div>
+              <div class="pool-end pool-end-left" id="poolBlocks">
+                <div class="block" data-lane-block="1">1</div><div class="block" data-lane-block="2">2</div><div class="block" data-lane-block="3">3</div><div class="block" data-lane-block="4">4</div><div class="block" data-lane-block="5">5</div>
               </div>
 
               <div id="poolWater" class="pool-water">
+                <!-- 3 khoang nước tách biệt với vách ngăn nổi bật -->
+                <div class="pool-zones-grid">
+                  <div id="zoneColTH" class="pool-zone zone-th"><span class="zone-watermark">TIỂU HỌC • TH</span></div>
+                  <div id="zoneColTHCS" class="pool-zone zone-thcs"><span class="zone-watermark">THCS</span></div>
+                  <div id="zoneColTHPT" class="pool-zone zone-thpt"><span class="zone-watermark">THPT</span></div>
+                </div>
+
                 <div class="lane-line" style="top:10%"></div><div class="lane-line" style="top:30%"></div>
                 <div class="lane-line" style="top:50%"></div><div class="lane-line" style="top:70%"></div>
                 <div class="lane-line" style="top:90%"></div>
 
                 <div class="lane-rope" style="top:20%"></div><div class="lane-rope" style="top:40%"></div>
                 <div class="lane-rope" style="top:60%"></div><div class="lane-rope" style="top:80%"></div>
-
-                <div class="depth-divider"></div>
-                <div id="tagShallowDepth" class="depth-tag left-3">Nông • 1.2m</div>
-                <div id="tagDeepDepth" class="depth-tag right-3">Sâu • 1.8m</div>
 
                 <div id="swimmersLayer" class="absolute inset-0"></div>
                 <div id="poolEmptyState" class="hidden absolute inset-0 z-10 flex items-center justify-center p-4">
@@ -313,6 +360,10 @@
             <button id="btnTestSound" type="button" class="w-full py-1.5 rounded-lg btn-soft text-xs font-semibold flex items-center justify-center gap-1.5">
               <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-amber-400"></i> Thử tiếng còi báo động
             </button>
+            <div class="text-[10px] text-subtle flex flex-wrap justify-between gap-1 pt-0.5 border-t border-soft">
+              <span>Phím tắt: <b class="font-mono text-muted">1-4</b> Demo</span>
+              <span><b class="font-mono text-muted">Space</b> Còi • <b class="font-mono text-muted">M</b> Tắt tiếng</span>
+            </div>
           </div>
         </div>
       </aside>
@@ -387,18 +438,38 @@
       </div>
 
       <div class="flex flex-wrap items-center justify-between gap-2 mt-3.5 text-xs text-muted">
-        <a id="dtCallLink" href="tel:0900000000" class="inline-flex items-center gap-1.5 text-ocean-500 hover:underline font-semibold">
-          <i data-lucide="phone-call" class="w-3.5 h-3.5"></i> <span id="dtContact">—</span>
-        </a>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <a id="dtCallLink" href="tel:0900000000" class="inline-flex items-center gap-1.5 text-ocean-500 hover:underline font-semibold">
+            <i data-lucide="phone-call" class="w-3.5 h-3.5"></i> <span id="dtContact">—</span>
+          </a>
+          <span id="dtSignal" class="hidden font-mono text-[11px] px-2 py-0.5 rounded-md stat-box text-sky-400"></span>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <select id="dtZoneSelect" class="field py-1 text-xs" title="Chuyển khu vực mực nước">
+            <option value="TH">Khu Tiểu học (TH)</option>
+            <option value="THCS">Khu THCS</option>
+            <option value="THPT">Khu THPT</option>
+          </select>
           <select id="dtLaneSelect" class="field py-1 text-xs" title="Chuyển làn bơi">
             <option value="1">Làn 1</option><option value="2">Làn 2</option><option value="3">Làn 3</option>
             <option value="4">Làn 4</option><option value="5">Làn 5</option>
           </select>
+          <button id="btnDtEditToggle" type="button" class="px-2.5 py-1.5 rounded-lg btn-soft font-semibold" title="Sửa tên, lớp, SĐT">Sửa</button>
           <button id="btnDtToggleWater" class="px-3 py-1.5 rounded-lg btn-soft font-semibold">Đưa lên bờ</button>
+          <button id="btnDtResolve" class="hidden px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold">Cứu hộ</button>
           <button id="btnDtSos" class="px-3 py-1.5 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 font-semibold">Thử SOS</button>
         </div>
       </div>
+
+      <!-- Form chỉnh sửa nhanh hồ sơ học sinh (gắn với mã đai ESP32) -->
+      <form id="dtEditForm" class="hidden mt-3 pt-3 border-t border-soft grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+        <input id="dtEditName" class="field" placeholder="Họ tên học sinh" required>
+        <input id="dtEditClass" class="field" placeholder="Lớp (VD: 10A1)">
+        <div class="flex gap-1.5">
+          <input id="dtEditContact" class="field flex-1 min-w-0" placeholder="SĐT phụ huynh">
+          <button type="submit" class="px-3 py-1.5 rounded-lg bg-ocean-500 hover:bg-ocean-600 text-white font-bold shrink-0">Lưu</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -442,6 +513,8 @@
           <pre id="sampleJsonPre" class="code">{
   "deviceId": "AQUA-01",
   "studentName": "Nguyễn Văn An",
+  "zone": "TH",
+  "lane": 1,
   "inWater": true,
   "motionState": "STILL",
   "stillDuration": 12,
@@ -586,10 +659,11 @@
 
         <div class="grid grid-cols-2 gap-3">
           <label class="block space-y-1">
-            <span class="text-xs font-semibold text-muted">Nước nông / sâu (m)</span>
-            <div class="flex gap-1.5">
-              <input id="inpShallow" type="number" step="0.1" class="field w-1/2 py-2 font-mono" value="1.2">
-              <input id="inpDeep" type="number" step="0.1" class="field w-1/2 py-2 font-mono" value="1.8">
+            <span class="text-xs font-semibold text-muted">Mực nước TH / THCS / THPT (m)</span>
+            <div class="grid grid-cols-3 gap-1">
+              <input id="inpThDepth" type="number" step="0.1" class="field py-2 font-mono text-center" value="0.9" title="Khu Tiểu học (Nông)">
+              <input id="inpThcsDepth" type="number" step="0.1" class="field py-2 font-mono text-center" value="1.3" title="Khu THCS (Trung bình)">
+              <input id="inpThptDepth" type="number" step="0.1" class="field py-2 font-mono text-center" value="1.8" title="Khu THPT (Sâu)">
             </div>
           </label>
           <label class="block space-y-1">
@@ -614,6 +688,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

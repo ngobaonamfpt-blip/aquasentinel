@@ -12,10 +12,14 @@
     students: [],
     kpis: { total: 0, inWater: 0, onDeck: 0, safe: 0, warning: 0, danger: 0, hardwareOnlineCount: 0, threshold: 10, simulationMode: 'normal' },
     tab: 'pool',
+    filterZone: 'ALL',
     filterLane: 'ALL',
     filterRisk: 'ALL',
     search: '',
     audioOn: true,
+    voiceOn: true,
+    lastSpokenFor: null,
+    lastSpokenAt: 0,
     activeDanger: null,
     mutedFor: null,
     dismissedFor: null,
@@ -219,8 +223,9 @@
     if (!cfg) return;
     $('hdrClassName').textContent = cfg.className || 'Lớp 10A1 & 10A2';
     $('hdrSupervisor').textContent = cfg.supervisorName || 'Thầy Trần Hữu Nghĩa';
-    $('tagShallowDepth').textContent = `Nông • ${cfg.shallowDepth ?? 1.2}m`;
-    $('tagDeepDepth').textContent = `Sâu • ${cfg.deepDepth ?? 1.8}m`;
+    if ($('tagThDepth')) $('tagThDepth').textContent = `Nông • ${cfg.thDepth ?? cfg.shallowDepth ?? 0.9}m`;
+    if ($('tagThcsDepth')) $('tagThcsDepth').textContent = `Trung bình • ${cfg.thcsDepth ?? 1.3}m`;
+    if ($('tagThptDepth')) $('tagThptDepth').textContent = `Sâu • ${cfg.thptDepth ?? cfg.deepDepth ?? 1.8}m`;
     if ($('infoWaterEnv')) $('infoWaterEnv').textContent = `${cfg.waterTemp ?? 28.2}°C • pH ${cfg.waterPh ?? 7.3}`;
     const len = cfg.poolLength || 25;
     const wid = cfg.poolWidth || 12.5;
@@ -275,10 +280,11 @@
   function filtered() {
     const q = state.search;
     return state.students.filter((s) => {
-      if (state.filterLane === 'DECK' && s.inWater) return false;
-      if (!['ALL', 'DECK'].includes(state.filterLane) && (!s.inWater || String(s.lane) !== state.filterLane)) return false;
+      if (state.filterZone === 'DECK' && s.inWater) return false;
+      if (!['ALL', 'DECK'].includes(state.filterZone) && (!s.inWater || (s.zone || 'THCS') !== state.filterZone)) return false;
+      if (state.filterLane !== 'ALL' && (!s.inWater || String(s.lane) !== state.filterLane)) return false;
       if (state.filterRisk !== 'ALL' && (s.risk ? s.risk.level : 'SAFE') !== state.filterRisk) return false;
-      if (q && !`${s.name} ${s.id} ${s.class}`.toLowerCase().includes(q)) return false;
+      if (q && !`${s.name} ${s.id} ${s.class} ${s.zone || ''}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }
@@ -322,6 +328,41 @@
     $('deckList').innerHTML = deck.length
       ? deck.map((s) => `<button class="deck-chip" data-id="${esc(s.id)}">${esc(shortName(s.name))}</button>`).join('')
       : '<span class="text-[11px] text-slate-400">Không có</span>';
+
+    // Cập nhật màu bục xuất phát theo trạng thái nguy hiểm của từng làn + đếm & tô màu 3 phân khu (TH / THCS / THPT)
+    const laneState = [null, 'SAFE', 'SAFE', 'SAFE', 'SAFE', 'SAFE'];
+    const zoneCount = { TH: 0, THCS: 0, THPT: 0 };
+    const zoneState = { TH: 'SAFE', THCS: 'SAFE', THPT: 'SAFE' };
+    state.students.forEach((s) => {
+      if (!s.inWater) return;
+      const lvl = levelOf(s);
+      if (s.lane >= 1 && s.lane <= 5) {
+        if (lvl === 'DANGER') laneState[s.lane] = 'DANGER';
+        else if (lvl === 'WARNING' && laneState[s.lane] !== 'DANGER') laneState[s.lane] = 'WARNING';
+      }
+      const z = s.zone || 'THCS';
+      if (zoneCount[z] !== undefined) {
+        zoneCount[z]++;
+        if (lvl === 'DANGER') zoneState[z] = 'DANGER';
+        else if (lvl === 'WARNING' && zoneState[z] !== 'DANGER') zoneState[z] = 'WARNING';
+      }
+    });
+    document.querySelectorAll('[data-lane-block]').forEach((b) => {
+      const ln = Number(b.dataset.laneBlock);
+      b.classList.toggle('lane-danger', laneState[ln] === 'DANGER');
+      b.classList.toggle('lane-warning', laneState[ln] === 'WARNING');
+    });
+    ['TH', 'THCS', 'THPT'].forEach((z) => {
+      const cntEl = $('zoneCount' + z);
+      const colEl = $('zoneCol' + z);
+      const tabEl = $('zoneTab' + z);
+      if (cntEl) cntEl.textContent = `${zoneCount[z]} HS`;
+      [colEl, tabEl].forEach((el) => {
+        if (!el) return;
+        el.classList.toggle('zone-danger', zoneState[z] === 'DANGER');
+        el.classList.toggle('zone-warning', zoneState[z] === 'WARNING');
+      });
+    });
   }
 
   // --- Thẻ học sinh ---
@@ -350,7 +391,7 @@
             <span class="chip ${L.chip} shrink-0">${L.label}</span>
           </div>
           <div class="grid grid-cols-3 gap-1.5 mt-2.5">
-            <div class="mini"><div class="mini-l">Nước</div><div class="mini-v ${s.inWater ? 'text-sky-500' : ''}">${s.inWater ? 'In Water' : 'Bờ'}</div></div>
+            <div class="mini"><div class="mini-l">Khu vực</div><div class="mini-v ${s.inWater ? 'text-sky-500' : ''}">${s.inWater ? esc(s.zone || 'THCS') : 'Bờ'}</div></div>
             <div class="mini"><div class="mini-l">Nghiêng</div><div class="mini-v">${s.tiltAngle}°</div></div>
             <div class="mini"><div class="mini-l">Làn</div><div class="mini-v">${s.inWater ? 'Làn ' + s.lane : '—'}</div></div>
           </div>
@@ -424,19 +465,38 @@
   }
 
   // ================= BÁO ĐỘNG KHẨN CẤP =================
+  function speakAlert(student) {
+    if (!state.voiceOn || !state.audioOn || !('speechSynthesis' in window)) return;
+    const now = Date.now();
+    if (state.lastSpokenFor === student.id && now - state.lastSpokenAt < 9000) return;
+    state.lastSpokenFor = student.id;
+    state.lastSpokenAt = now;
+    try {
+      window.speechSynthesis.cancel();
+      const reason = student.sosPressed ? 'đã bấm nút khẩn cấp' : `đang bất động ${student.stillDuration} giây`;
+      const zoneSpoken = student.zone === 'TH' ? 'khu tiểu học' : student.zone === 'THPT' ? 'khu trung học phổ thông' : 'khu trung học cơ sở';
+      const utter = new SpeechSynthesisUtterance(`Cảnh báo khẩn cấp! Học sinh ${student.name}, tại ${zoneSpoken}, làn ${student.lane}, ${reason}!`);
+      utter.lang = 'vi-VN';
+      utter.rate = 1.08;
+      window.speechSynthesis.speak(utter);
+    } catch {}
+  }
+
   function handleEmergency() {
     const dangers = state.students.filter((s) => s.risk && s.risk.level === 'DANGER');
     const d = dangers[0];
     if (!d) {
       state.activeDanger = null;
-      state.mutedFor = state.dismissedFor = null;
+      state.mutedFor = state.dismissedFor = state.lastSpokenFor = null;
       $('alertFrame').classList.add('hidden');
       $('alertBanner').classList.add('hidden');
       $('emergencyModal').classList.add('hidden');
       stopSiren();
+      if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch {} }
       return;
     }
 
+    const isNewDanger = !state.activeDanger || state.activeDanger.id !== d.id;
     state.activeDanger = d;
     const where = `Làn ${d.lane} (${d.poolZone})`;
     $('alertFrame').classList.remove('hidden');
@@ -446,7 +506,13 @@
       (dangers.length > 1 ? ` (+${dangers.length - 1})` : '');
 
     if (state.mutedFor === d.id) stopSiren();
-    else startSiren();
+    else {
+      startSiren();
+      speakAlert(d);
+      if (isNewDanger && navigator.vibrate) {
+        try { navigator.vibrate([300, 100, 300, 100, 500]); } catch {}
+      }
+    }
 
     if (state.dismissedFor !== d.id) {
       $('emergencyModal').classList.remove('hidden');
@@ -564,8 +630,21 @@
     $('dtContact').textContent = s.emergencyContact || '—';
     const phoneDigits = String(s.emergencyContact || '').replace(/[^\d+]/g, '');
     $('dtCallLink').href = phoneDigits ? `tel:${phoneDigits}` : '#';
+    if ($('dtZoneSelect')) $('dtZoneSelect').value = s.zone || 'THCS';
     $('dtLaneSelect').value = String(s.lane || 1);
     $('btnDtToggleWater').textContent = s.inWater ? 'Đưa lên bờ' : 'Cho xuống bể';
+    $('btnDtResolve').classList.toggle('hidden', lvl !== 'DANGER');
+    const sig = $('dtSignal');
+    if (sig) {
+      if (s.isHardwareOnline) {
+        const rssiText = s.rssi != null ? `${s.rssi} dBm` : 'Wi-Fi OK';
+        const agoText = s.lastSeenAgo != null ? ` • ${s.lastSeenAgo}s` : '';
+        sig.textContent = `📶 ${rssiText}${agoText}`;
+        sig.classList.remove('hidden');
+      } else {
+        sig.classList.add('hidden');
+      }
+    }
   }
 
   // ================= GIẢ LẬP / API / NHẬT KÝ =================
@@ -662,8 +741,9 @@
     if (cfg.supervisorName) $('inpSupervisor').value = cfg.supervisorName;
     if (cfg.studentCount) $('inpStudentCount').value = cfg.studentCount;
     if (cfg.threshold) $('inpThreshold').value = cfg.threshold;
-    if (cfg.shallowDepth) $('inpShallow').value = cfg.shallowDepth;
-    if (cfg.deepDepth) $('inpDeep').value = cfg.deepDepth;
+    if ($('inpThDepth') && (cfg.thDepth || cfg.shallowDepth)) $('inpThDepth').value = cfg.thDepth || cfg.shallowDepth;
+    if ($('inpThcsDepth') && cfg.thcsDepth) $('inpThcsDepth').value = cfg.thcsDepth;
+    if ($('inpThptDepth') && (cfg.thptDepth || cfg.deepDepth)) $('inpThptDepth').value = cfg.thptDepth || cfg.deepDepth;
     if (cfg.dataMode) $('inpDataMode').value = cfg.dataMode;
     $('inpTheme').value = document.body.classList.contains('light') ? 'light' : 'dark';
     $('inpAudioOn').checked = state.audioOn;
@@ -702,15 +782,16 @@
   async function submitSetup(useDefault) {
     ensureAudio();
     const payload = useDefault
-      ? { dataMode: 'hardware', className: 'Lớp 10A1 & 10A2', supervisorName: 'Thầy Trần Hữu Nghĩa', studentCount: 30, threshold: 10, shallowDepth: 1.2, deepDepth: 1.8 }
+      ? { dataMode: 'hardware', className: 'TH • THCS • THPT', supervisorName: 'Thầy Trần Hữu Nghĩa', studentCount: 30, threshold: 10, thDepth: 0.9, thcsDepth: 1.3, thptDepth: 1.8 }
       : {
           dataMode: $('inpDataMode').value || 'hardware',
-          className: $('inpClassName').value.trim() || 'Lớp 10A1 & 10A2',
+          className: $('inpClassName').value.trim() || 'TH • THCS • THPT',
           supervisorName: $('inpSupervisor').value.trim() || 'Thầy Trần Hữu Nghĩa',
           studentCount: Math.min(40, Math.max(5, Math.round(parseNum($('inpStudentCount').value, 30)))),
           threshold: Math.min(30, Math.max(5, Math.round(parseNum($('inpThreshold').value, 10)))),
-          shallowDepth: Math.min(3.0, Math.max(0.5, parseNum($('inpShallow').value, 1.2))),
-          deepDepth: Math.min(5.0, Math.max(0.8, parseNum($('inpDeep').value, 1.8))),
+          thDepth: Math.min(2.5, Math.max(0.4, parseNum($('inpThDepth')?.value, 0.9))),
+          thcsDepth: Math.min(3.0, Math.max(0.6, parseNum($('inpThcsDepth')?.value, 1.3))),
+          thptDepth: Math.min(5.0, Math.max(0.8, parseNum($('inpThptDepth')?.value, 1.8))),
         };
 
     const chosenTheme = useDefault ? (localStorage.getItem('aquasentinel_theme') || 'dark') : $('inpTheme').value;
@@ -832,6 +913,7 @@
       } catch {}
     };
 
+    if ($('filterZone')) $('filterZone').onchange = (e) => { state.filterZone = e.target.value; renderAll(); };
     $('filterLane').onchange = (e) => { state.filterLane = e.target.value; renderAll(); };
     $('filterRisk').onchange = (e) => { state.filterRisk = e.target.value; renderAll(); };
     $('searchInput').oninput = (e) => { state.search = e.target.value.trim().toLowerCase(); renderAll(); };
@@ -873,6 +955,25 @@
         }
       } catch {}
     };
+
+    if ($('dtZoneSelect')) {
+      $('dtZoneSelect').onchange = async (e) => {
+        if (!state.selectedId) return;
+        const zone = e.target.value;
+        try {
+          const res = await fetch(`/api/students/${encodeURIComponent(state.selectedId)}/zone`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ zone }),
+          });
+          const data = await res.json();
+          if (data.ok) {
+            toast(`Đã chuyển ${data.student.name} sang ${data.student.zoneLabel}`);
+            fetchStatus();
+          }
+        } catch {}
+      };
+    }
 
     $('dtLaneSelect').onchange = async (e) => {
       if (!state.selectedId) return;
@@ -948,6 +1049,65 @@
       if (!state.audioOn) stopSiren();
       else handleEmergency();
     };
+    if ($('btnToggleVoice')) {
+      $('btnToggleVoice').onclick = () => {
+        state.voiceOn = !state.voiceOn;
+        $('btnToggleVoice').classList.toggle('off', !state.voiceOn);
+        toast(state.voiceOn ? 'Đã bật thông báo giọng nói tiếng Việt' : 'Đã tắt giọng nói cảnh báo');
+        if (!state.voiceOn && 'speechSynthesis' in window) { try { window.speechSynthesis.cancel(); } catch {} }
+      };
+    }
+
+    // Chỉnh sửa hồ sơ học sinh trong Modal Chi tiết
+    if ($('btnDtEditToggle')) {
+      $('btnDtEditToggle').onclick = () => {
+        const s = state.students.find((x) => x.id === state.selectedId);
+        if (!s) return;
+        const form = $('dtEditForm');
+        const opening = form.classList.contains('hidden');
+        if (opening) {
+          $('dtEditName').value = s.name || '';
+          $('dtEditClass').value = s.class || '';
+          $('dtEditContact').value = s.emergencyContact || '';
+        }
+        form.classList.toggle('hidden');
+      };
+    }
+    if ($('dtEditForm')) {
+      $('dtEditForm').onsubmit = async (e) => {
+        e.preventDefault();
+        if (!state.selectedId) return;
+        try {
+          const res = await fetch(`/api/students/${encodeURIComponent(state.selectedId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: $('dtEditName').value.trim(),
+              class: $('dtEditClass').value.trim(),
+              emergencyContact: $('dtEditContact').value.trim(),
+            }),
+          });
+          const data = await res.json();
+          if (data.ok) {
+            $('dtEditForm').classList.add('hidden');
+            state.simTargetCount = 0;
+            toast(`Đã cập nhật hồ sơ ${data.student.name}`);
+            fetchStatus();
+          }
+        } catch {}
+      };
+    }
+    if ($('btnDtResolve')) {
+      $('btnDtResolve').onclick = async () => {
+        if (!state.selectedId) return;
+        const s = state.students.find((x) => x.id === state.selectedId);
+        if (!s) return;
+        state.activeDanger = s;
+        await resolveAlert();
+        $('detailModal').classList.add('hidden');
+        state.selectedId = null;
+      };
+    }
     $('btnTestSound').onclick = () => {
       ensureAudio();
       startSiren();
@@ -1014,8 +1174,18 @@
       }
       if (e.key === 'Escape') {
         ['detailModal', 'incidentsModal', 'docsModal', 'poolSizeModal'].forEach((id) => $(id).classList.add('hidden'));
+        if ($('dtEditForm')) $('dtEditForm').classList.add('hidden');
         state.selectedId = null;
+        return;
       }
+      // Phím tắt trình diễn nhanh STEMPETITION
+      if (e.key === '1') simulate('normal');
+      else if (e.key === '2') simulate('sos');
+      else if (e.key === '3') simulate('silent_drowning');
+      else if (e.key === '4') simulate('struggling');
+      else if (e.key === ' ') { e.preventDefault(); playWhistle(); toast('Đã phát còi tập hợp'); }
+      else if (e.key.toLowerCase() === 'm') $('btnToggleAudio').click();
+      else if (e.key.toLowerCase() === 'f') $('btnFullscreen').click();
     });
   }
 

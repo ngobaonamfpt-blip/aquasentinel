@@ -42,11 +42,14 @@ const char* WIFI_PASSWORD = "MAT_KHAU_WIFI";         // Đổi thành mật kh�
 
 // Link máy chủ AquaSentinel đã deploy trên Railway (Hỗ trợ cả HTTPS và HTTP local)
 const char* SERVER_URL    = "https://aquasentinel-web-production.up.railway.app/api/telemetry";
+// Khóa API tùy chọn (chỉ cần điền nếu máy chủ bật REQUIRE_API_KEY=true)
+const char* API_KEY       = "";
 
 // Mã nhận diện thiết bị & thông tin học sinh (AQUA-01 .. AQUA-40)
 const char* DEVICE_ID     = "AQUA-01";
 const char* STUDENT_NAME  = "Nguyễn Văn An";
-const char* STUDENT_CLASS = "10A1";
+const char* STUDENT_CLASS = "5A1";
+const char* POOL_ZONE     = "TH";   // Phân khu mực nước (không cần GPS): "TH" | "THCS" | "THPT"
 const int   POOL_LANE     = 1;
 
 // Định nghĩa chân phần cứng
@@ -54,10 +57,10 @@ const int   POOL_LANE     = 1;
 #define PIN_SOS_BUTTON    13     // Chân nút bấm SOS (Active LOW)
 #define PIN_ALERT_BUZZER  18     // Chân còi báo động / LED tại chỗ
 
-// Ngưỡng phát hiện thuật toán
+// Ngưỡng phát hiện thuật toán (tự động đồng bộ từ Web Dashboard)
 const float STILL_THRESHOLD_G     = 0.15;  // Biên độ biến thiên gia tốc cực đại khi bất động
 const float STRUGGLE_THRESHOLD_G  = 2.20;  // Biên độ biến thiên gia tốc khi vùng vẫy dữ dội
-const int   STILL_ALARM_SECONDS   = 10;    // Ngưỡng giây bất động kích hoạt báo động đỏ
+int         stillAlarmSeconds     = 10;    // Ngưỡng giây bất động (đồng bộ 2 chiều từ server)
 
 // Khởi tạo đối tượng
 Adafruit_MPU6050 mpu;
@@ -201,7 +204,7 @@ void loop() {
     }
 
     // Cảnh báo còi tại chỗ nếu gặp nguy hiểm
-    if (sosFlag || (inWater && stillCounterSeconds >= STILL_ALARM_SECONDS)) {
+    if (sosFlag || (inWater && stillCounterSeconds >= stillAlarmSeconds)) {
       digitalWrite(PIN_ALERT_BUZZER, HIGH); // Bật còi rung đai ngực
     } else {
       digitalWrite(PIN_ALERT_BUZZER, LOW);
@@ -226,6 +229,7 @@ void sendTelemetryToServer(float ax, float ay, float az, float gx, float gy, flo
   doc["deviceId"]       = DEVICE_ID;
   doc["studentName"]    = STUDENT_NAME;
   doc["class"]          = STUDENT_CLASS;
+  doc["zone"]           = POOL_ZONE;  // "TH" | "THCS" | "THPT"
   doc["lane"]           = POOL_LANE;
   doc["inWater"]        = inWater;
   doc["motionState"]    = currentMotionState; // "NORMAL" | "STRUGGLING" | "STILL"
@@ -234,6 +238,7 @@ void sendTelemetryToServer(float ax, float ay, float az, float gx, float gy, flo
   doc["tiltAngle"]      = (int)tilt;
   doc["heartRate"]      = 88; // Tích hợp cảm biến nhịp tim nếu có
   doc["battery"]        = 95; // Đọc điện áp pin ADC
+  doc["rssi"]           = WiFi.RSSI(); // Cường độ tín hiệu Wi-Fi (dBm)
 
   JsonObject accel = doc["accel"].to<JsonObject>();
   accel["x"] = round(ax * 100) / 100.0;
@@ -259,12 +264,31 @@ void sendTelemetryToServer(float ax, float ay, float az, float gx, float gy, flo
     http.begin(plainClient, SERVER_URL);
   }
   http.addHeader("Content-Type", "application/json");
+  if (strlen(API_KEY) > 0) {
+    http.addHeader("X-API-Key", API_KEY);
+  }
   http.setTimeout(5000);
 
   int httpCode = http.POST(jsonPayload);
   if (httpCode == 200 || httpCode == 201) {
-    Serial.printf("[HTTP POST OK] Trạng thái: %s | Bất động: %ds | SOS: %s\n",
-                  currentMotionState.c_str(), stillCounterSeconds, sosFlag ? "TRUE" : "FALSE");
+    // Phản hồi 2 chiều từ Dashboard: đồng bộ ngưỡng & lệnh tắt còi SOS từ xa
+    String respBody = http.getString();
+    JsonDocument respDoc;
+    if (!deserializeJson(respDoc, respBody)) {
+      if (respDoc["threshold"].is<int>()) {
+        int srvTh = respDoc["threshold"];
+        if (srvTh >= 3 && srvTh <= 60) stillAlarmSeconds = srvTh;
+      }
+      if (respDoc["resetSos"] == true) {
+        sosFlag = false;
+        stillCounterSeconds = 0;
+        digitalWrite(PIN_ALERT_BUZZER, LOW);
+        Serial.println("[SYNC] Đã nhận lệnh Xác nhận cứu hộ từ Dashboard -> Tắt còi SOS!");
+      }
+    }
+    Serial.printf("[HTTP POST OK] %s | Bất động: %ds/%ds | SOS: %s | RSSI: %ddBm\n",
+                  currentMotionState.c_str(), stillCounterSeconds, stillAlarmSeconds,
+                  sosFlag ? "TRUE" : "FALSE", WiFi.RSSI());
   } else {
     Serial.printf("[HTTP POST Lỗi] Mã phản hồi: %d\n", httpCode);
   }

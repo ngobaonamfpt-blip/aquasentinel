@@ -1,6 +1,6 @@
 {
   "name": "aquasentinel-dashboard",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "AquaSentinel - Hệ thống giám sát & cảnh báo nguy cơ đuối nước tại bể bơi trường học (Dự án STEMPETITION - Đội AquaVix)",
   "main": "server.js",
   "scripts": {
